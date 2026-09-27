@@ -1,0 +1,11 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.DS_Store
+
+# Supabase keys live here; never commit them.
+.env
+.env*.local
