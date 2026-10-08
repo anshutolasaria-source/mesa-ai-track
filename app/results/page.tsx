@@ -19,6 +19,7 @@ export default function ResultsPage() {
   const [error, setError] = useState("");
   const [showAll, setShowAll] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -35,9 +36,12 @@ export default function ResultsPage() {
     load();
   }, [load]);
 
-  /** Clears every answer so the group (or a demo) can start from scratch. */
+  /**
+   * Clears every answer so the group (or a demo) can start from scratch.
+   * The page asks for confirmation itself: a native confirm() dialog can be
+   * suppressed by the browser, which silently cancelled the whole thing.
+   */
   async function clearAll() {
-    if (!confirm("Clear everyone's answers and start over? This can't be undone.")) return;
     setClearing(true);
     setError("");
     try {
@@ -50,6 +54,7 @@ export default function ResultsPage() {
       if (!data || data.length === 0) throw new Error("Nothing was cleared. Please try again.");
       await load();
       setShowAll(false);
+      setConfirming(false);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -98,13 +103,26 @@ export default function ResultsPage() {
             <button className="secondary" onClick={load}>
               Refresh
             </button>
-            {ordered.length > 0 && (
-              <button className="secondary danger" onClick={clearAll} disabled={clearing}>
-                {clearing ? "Clearing…" : "Start over"}
+            {ordered.length > 0 && !confirming && (
+              <button className="secondary danger" onClick={() => setConfirming(true)}>
+                Start over
               </button>
             )}
           </div>
         </div>
+        {confirming && (
+          <p className="notice confirm">
+            <span>Clear everyone&apos;s answers and start over? This can&apos;t be undone.</span>
+            <span className="row">
+              <button className="danger-solid" onClick={clearAll} disabled={clearing}>
+                {clearing ? "Clearing…" : "Yes, clear all answers"}
+              </button>
+              <button className="secondary" onClick={() => setConfirming(false)} disabled={clearing}>
+                Cancel
+              </button>
+            </span>
+          </p>
+        )}
         <ul className="people">
           {FRIENDS.map((f) => {
             const r = byName.get(f);
