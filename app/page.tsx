@@ -193,7 +193,15 @@ export default function PreferencesPage() {
 }
 
 function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (err && typeof err === "object" && "message" in err) return String(err.message);
-  return "Something went wrong. Please try again.";
+  const raw =
+    err instanceof Error
+      ? err.message
+      : err && typeof err === "object" && "message" in err
+        ? String(err.message)
+        : "";
+  // The database still carries the old rule limiting names to the five original
+  // friends; say so in plain words instead of quoting the constraint.
+  if (raw.includes("responses_name_check"))
+    return "This database still only accepts the five original names (Riya, Siddharth, Karan, Aisha, Preethi). Run the drop constraint line from supabase/schema.sql to allow any name.";
+  return raw || "Something went wrong. Please try again.";
 }
