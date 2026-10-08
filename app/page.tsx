@@ -4,13 +4,11 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { DESTINATIONS, FRIENDS, TRIP_TYPES } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
-import type { TripResponse } from "@/lib/scoring";
 
 type Status =
   | { kind: "idle" }
-  | { kind: "loading" }
   | { kind: "saving" }
-  | { kind: "saved"; edited: boolean }
+  | { kind: "saved"; name: string }
   | { kind: "error"; message: string };
 
 const EMPTY = {
@@ -24,37 +22,13 @@ const EMPTY = {
 export default function PreferencesPage() {
   const [name, setName] = useState("");
   const [form, setForm] = useState(EMPTY);
-  const [hasExisting, setHasExisting] = useState(false);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
-  async function chooseName(value: string) {
+  // The form always starts blank: earlier answers are never loaded back in.
+  function chooseName(value: string) {
     setName(value);
     setForm(EMPTY);
-    setHasExisting(false);
-    if (!value) return setStatus({ kind: "idle" });
-
-    setStatus({ kind: "loading" });
-    try {
-      const { data, error } = await getSupabase()
-        .from("responses")
-        .select("*")
-        .eq("name", value)
-        .maybeSingle<TripResponse>();
-      if (error) throw error;
-      if (data) {
-        setForm({
-          budget: String(data.budget),
-          from: data.available_from,
-          to: data.available_to,
-          tripTypes: data.trip_types,
-          noGo: data.no_go,
-        });
-        setHasExisting(true);
-      }
-      setStatus({ kind: "idle" });
-    } catch (err) {
-      setStatus({ kind: "error", message: errorMessage(err) });
-    }
+    setStatus({ kind: "idle" });
   }
 
   function toggle(field: "tripTypes" | "noGo", id: string) {
@@ -94,24 +68,26 @@ export default function PreferencesPage() {
           { onConflict: "name" },
         );
       if (error) throw error;
-      setStatus({ kind: "saved", edited: hasExisting });
-      setHasExisting(true);
+      // Clear the form so the next person starts fresh.
+      setName("");
+      setForm(EMPTY);
+      setStatus({ kind: "saved", name });
     } catch (err) {
       setStatus({ kind: "error", message: errorMessage(err) });
     }
   }
 
-  const busy = status.kind === "loading" || status.kind === "saving";
+  const busy = status.kind === "saving";
 
   return (
     <main>
       <h1>Where should we go?</h1>
       <p className="lead">
-        Add your preferences once. If you change your mind later, come back, pick your name, and
-        update your answer.
+        Pick your name and fill in your preferences. If you change your mind, just fill it in
+        again: your new answer replaces your old one.
       </p>
 
-      <form onSubmit={submit} className="card">
+      <form onSubmit={submit} className="card" autoComplete="off">
         <label className="field">
           <span>Your name</span>
           <select value={name} onChange={(e) => chooseName(e.target.value)} required>
@@ -123,11 +99,6 @@ export default function PreferencesPage() {
             ))}
           </select>
         </label>
-
-        {status.kind === "loading" && <p className="muted">Loading your answer…</p>}
-        {hasExisting && status.kind === "idle" && (
-          <p className="notice">We found your earlier answer. Change anything you like and save again.</p>
-        )}
 
         <fieldset disabled={!name || busy}>
           <label className="field">
@@ -202,13 +173,13 @@ export default function PreferencesPage() {
           </div>
 
           <button type="submit">
-            {status.kind === "saving" ? "Saving…" : hasExisting ? "Update my answer" : "Submit my answer"}
+            {status.kind === "saving" ? "Saving…" : "Submit my answer"}
           </button>
         </fieldset>
 
         {status.kind === "saved" && (
           <p className="success">
-            {status.edited ? "Your answer is updated." : "Thanks, your answer is saved."}{" "}
+            Thanks {status.name}, your answer is saved.{" "}
             <Link href="/results">See the results →</Link>
           </p>
         )}

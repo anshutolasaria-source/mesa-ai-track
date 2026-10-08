@@ -5,7 +5,7 @@ Once all five have answered, the app shows the group's top 3 destinations from a
 10 Indian places, with how well each option fits each person and why.
 
 - **`/`**: preferences form (name, budget, free dates, trip types, places you won't go).
-  Pick your name again later to edit your answer.
+  The form always starts blank; submitting again under the same name replaces that person's answer.
 - **`/results`**: who has answered so far, the dates when everyone is free, and the top 3 options
   with a per-person fit score and reasons. You can also expand the full ranking of all 10 places.
 
