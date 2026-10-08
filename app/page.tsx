@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { DESTINATIONS, FRIENDS, TRIP_TYPES } from "@/lib/data";
+import { DESTINATIONS, TRIP_TYPES } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 
 type Status =
@@ -24,10 +24,8 @@ export default function PreferencesPage() {
   const [form, setForm] = useState(EMPTY);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
-  // The form always starts blank: earlier answers are never loaded back in.
   function chooseName(value: string) {
     setName(value);
-    setForm(EMPTY);
     setStatus({ kind: "idle" });
   }
 
@@ -41,7 +39,8 @@ export default function PreferencesPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const budget = Number(form.budget);
-    if (!name) return setStatus({ kind: "error", message: "Pick your name first." });
+    const trimmedName = name.trim();
+    if (!trimmedName) return setStatus({ kind: "error", message: "Enter your name first." });
     if (!Number.isFinite(budget) || budget <= 0)
       return setStatus({ kind: "error", message: "Enter a budget greater than zero." });
     if (!form.from || !form.to)
@@ -57,7 +56,7 @@ export default function PreferencesPage() {
         .from("responses")
         .upsert(
           {
-            name,
+            name: trimmedName,
             budget: Math.round(budget),
             available_from: form.from,
             available_to: form.to,
@@ -71,7 +70,7 @@ export default function PreferencesPage() {
       // Clear the form so the next person starts fresh.
       setName("");
       setForm(EMPTY);
-      setStatus({ kind: "saved", name });
+      setStatus({ kind: "saved", name: trimmedName });
     } catch (err) {
       setStatus({ kind: "error", message: errorMessage(err) });
     }
@@ -83,24 +82,28 @@ export default function PreferencesPage() {
     <main>
       <h1>Where should we go?</h1>
       <p className="lead">
-        Pick your name and fill in your preferences. If you change your mind, just fill it in
-        again: your new answer replaces your old one.
+        Enter your name and fill in your preferences. If you change your mind, just fill it in
+        again under the same name: your new answer replaces your old one.
       </p>
 
       <form onSubmit={submit} className="card" autoComplete="off">
         <label className="field">
           <span>Your name</span>
-          <select value={name} onChange={(e) => chooseName(e.target.value)} required>
-            <option value="">Choose your name…</option>
-            {FRIENDS.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => chooseName(e.target.value)}
+            placeholder="e.g. Riya"
+            maxLength={40}
+            autoComplete="off"
+            required
+          />
+          <small className="muted">
+            Use the same name if you fill this in again — your new answer replaces the old one.
+          </small>
         </label>
 
-        <fieldset disabled={!name || busy}>
+        <fieldset disabled={!name.trim() || busy}>
           <label className="field">
             <span>Budget per person for the whole trip (₹)</span>
             <input

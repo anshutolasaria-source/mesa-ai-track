@@ -2,8 +2,8 @@
 
 create table if not exists public.responses (
   id uuid primary key default gen_random_uuid(),
-  name text not null unique
-    check (name in ('Riya', 'Siddharth', 'Karan', 'Aisha', 'Preethi')),
+  -- Any name is allowed; it is unique so answering again replaces that person's row.
+  name text not null unique check (length(trim(name)) between 1 and 40),
   budget integer not null check (budget > 0),
   available_from date not null,
   available_to date not null,
@@ -12,6 +12,10 @@ create table if not exists public.responses (
   updated_at timestamptz not null default now(),
   check (available_to >= available_from)
 );
+
+-- If the table was created by an earlier version that only allowed the five
+-- original names, drop that restriction (harmless to run on a fresh table):
+alter table public.responses drop constraint if exists responses_name_check;
 
 -- The app has no logins, so anyone with the link can read, add and edit answers.
 alter table public.responses enable row level security;

@@ -121,6 +121,10 @@ fieldset:disabled {
   font-weight: 600;
   margin-bottom: 6px;
 }
+.field small {
+  display: block;
+  margin-top: 6px;
+}
 .row {
   display: flex;
   gap: 16px;
@@ -136,6 +140,7 @@ fieldset:disabled {
 
 input[type="number"],
 input[type="date"],
+input[type="text"],
 select {
   font: inherit;
   color: var(--text);

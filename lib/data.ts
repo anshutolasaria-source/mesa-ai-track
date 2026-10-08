@@ -1,7 +1,4 @@
-// Fixed data for the trip planner: the group, the trip types and the 10 places we choose from.
-
-export const FRIENDS = ["Riya", "Siddharth", "Karan", "Aisha", "Preethi"] as const;
-export type Friend = (typeof FRIENDS)[number];
+// Fixed data for the trip planner: the trip types and the 10 places we choose from.
 
 export const TRIP_TYPES = [
   { id: "beach", label: "Beach" },

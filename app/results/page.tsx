@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { FRIENDS, formatRupees, tripTypeLabel } from "@/lib/data";
+import { formatRupees, tripTypeLabel } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 import {
   CLEARED_AT,
@@ -13,6 +13,9 @@ import {
   isCleared,
   rankDestinations,
 } from "@/lib/scoring";
+
+/** Ranking one person's answer against itself says nothing, so wait for a second. */
+const MIN_TO_RANK = 2;
 
 export default function ResultsPage() {
   const [responses, setResponses] = useState<TripResponse[] | null>(null);
@@ -48,7 +51,7 @@ export default function ResultsPage() {
       const { data, error } = await getSupabase()
         .from("responses")
         .update({ updated_at: CLEARED_AT })
-        .in("name", [...FRIENDS])
+        .not("name", "is", null)
         .select();
       if (error) throw error;
       if (!data || data.length === 0) throw new Error("Nothing was cleared. Please try again.");
@@ -80,14 +83,14 @@ export default function ResultsPage() {
     );
   }
 
-  const byName = new Map(responses.map((r) => [r.name, r]));
-  const ordered = FRIENDS.map((f) => byName.get(f)).filter((r): r is TripResponse => !!r);
-  const waitingOn = FRIENDS.filter((f) => !byName.has(f));
-  const everyoneIn = waitingOn.length === 0;
+  // Anyone can join, so there is no fixed list to wait for: rank whoever has
+  // answered, as soon as there are enough of them to compare.
+  const ordered = [...responses].sort((a, b) => a.name.localeCompare(b.name));
+  const enoughToRank = ordered.length >= MIN_TO_RANK;
 
-  const ranked = everyoneIn ? rankDestinations(ordered) : [];
+  const ranked = enoughToRank ? rankDestinations(ordered) : [];
   const top = ranked.slice(0, 3);
-  const freeWindow = everyoneIn ? commonWindow(ordered) : null;
+  const freeWindow = enoughToRank ? commonWindow(ordered) : null;
 
   return (
     <main>
@@ -97,7 +100,8 @@ export default function ResultsPage() {
       <section className="card">
         <div className="between">
           <h2>
-            Who has answered ({ordered.length} of {FRIENDS.length})
+            Who has answered ({ordered.length}
+            {ordered.length === 1 ? " person" : " people"})
           </h2>
           <div className="row">
             <button className="secondary" onClick={load}>
@@ -124,34 +128,28 @@ export default function ResultsPage() {
           </p>
         )}
         <ul className="people">
-          {FRIENDS.map((f) => {
-            const r = byName.get(f);
-            return (
-              <li key={f} className={r ? "done" : "waiting"}>
-                <strong>
-                  {r ? "✓" : "…"} {f}
-                </strong>
-                {r ? (
-                  <span className="muted">
-                    {formatRupees(r.budget)} · {formatRange(r.available_from, r.available_to)} ·{" "}
-                    {r.trip_types.length ? r.trip_types.map(tripTypeLabel).join(", ") : "any kind of trip"}
-                  </span>
-                ) : (
-                  <span className="muted">Hasn't answered yet</span>
-                )}
-              </li>
-            );
-          })}
+          {ordered.map((r) => (
+            <li key={r.name} className="done">
+              <strong>✓ {r.name}</strong>
+              <span className="muted">
+                {formatRupees(r.budget)} · {formatRange(r.available_from, r.available_to)} ·{" "}
+                {r.trip_types.length ? r.trip_types.map(tripTypeLabel).join(", ") : "any kind of trip"}
+              </span>
+            </li>
+          ))}
         </ul>
-        {!everyoneIn && (
+        {!enoughToRank && (
           <p className="notice">
-            Waiting on {listNames(waitingOn)}. The top 3 options will appear here once everyone has
-            answered. Share the <Link href="/">preferences form</Link> with them.
+            {ordered.length === 0
+              ? "No one has answered yet."
+              : "Only one answer so far, so there is nothing to compare yet."}{" "}
+            Share the <Link href="/">preferences form</Link> with the group. The top 3 options appear
+            once at least {MIN_TO_RANK} people have answered, and update as more join.
           </p>
         )}
       </section>
 
-      {everyoneIn && (
+      {enoughToRank && (
         <>
           <section className="card">
             <h2>When everyone is free</h2>
@@ -160,11 +158,11 @@ export default function ResultsPage() {
                 <strong>
                   {freeWindow.from} – {freeWindow.to}
                 </strong>{" "}
-                ({freeWindow.days} {freeWindow.days === 1 ? "day" : "days"} when all {FRIENDS.length} of you are free)
+                ({freeWindow.days} {freeWindow.days === 1 ? "day" : "days"} when all {ordered.length} of you are free)
               </p>
             ) : (
               <p className="error">
-                There are no dates when all {FRIENDS.length} of you are free. Someone will need to change
+                There are no dates when all {ordered.length} of you are free. Someone will need to change
                 their dates before you can book.
               </p>
             )}
@@ -299,7 +297,3 @@ function errorMessage(err: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-function listNames(names: readonly string[]): string {
-  if (names.length <= 1) return names.join("");
-  return names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
-}
