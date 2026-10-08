@@ -39,11 +39,18 @@ export default function ResultsPage() {
     setClearing(true);
     setError("");
     try {
-      const { error } = await getSupabase()
+      const { data, error } = await getSupabase()
         .from("responses")
         .delete()
-        .in("name", [...FRIENDS]);
+        .in("name", [...FRIENDS])
+        .select();
       if (error) throw error;
+      // With row-level security on, a missing delete policy removes nothing and
+      // reports no error, so treat "deleted nothing" as the failure it is.
+      if (!data || data.length === 0)
+        throw new Error(
+          "Nothing was cleared. The database is still blocking deletes — run the \"Anyone can clear responses\" policy from supabase/schema.sql in the Supabase SQL editor, then try again.",
+        );
       await load();
       setShowAll(false);
     } catch (err) {
