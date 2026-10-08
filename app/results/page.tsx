@@ -16,6 +16,7 @@ export default function ResultsPage() {
   const [responses, setResponses] = useState<TripResponse[] | null>(null);
   const [error, setError] = useState("");
   const [showAll, setShowAll] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -24,7 +25,7 @@ export default function ResultsPage() {
       if (error) throw error;
       setResponses((data ?? []) as TripResponse[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String((err as { message?: string })?.message ?? err));
+      setError(errorMessage(err));
     }
   }, []);
 
@@ -32,7 +33,27 @@ export default function ResultsPage() {
     load();
   }, [load]);
 
-  if (error) {
+  /** Wipes every answer so the group (or a demo) can start from scratch. */
+  async function clearAll() {
+    if (!confirm("Delete everyone's answers and start over? This can't be undone.")) return;
+    setClearing(true);
+    setError("");
+    try {
+      const { error } = await getSupabase()
+        .from("responses")
+        .delete()
+        .in("name", [...FRIENDS]);
+      if (error) throw error;
+      await load();
+      setShowAll(false);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setClearing(false);
+    }
+  }
+
+  if (error && !responses) {
     return (
       <main>
         <h1>Results</h1>
@@ -62,15 +83,23 @@ export default function ResultsPage() {
   return (
     <main>
       <h1>Results</h1>
+      {error && <p className="error">{error}</p>}
 
       <section className="card">
         <div className="between">
           <h2>
             Who has answered ({ordered.length} of {FRIENDS.length})
           </h2>
-          <button className="secondary" onClick={load}>
-            Refresh
-          </button>
+          <div className="row">
+            <button className="secondary" onClick={load}>
+              Refresh
+            </button>
+            {ordered.length > 0 && (
+              <button className="secondary danger" onClick={clearAll} disabled={clearing}>
+                {clearing ? "Clearing…" : "Start over"}
+              </button>
+            )}
+          </div>
         </div>
         <ul className="people">
           {FRIENDS.map((f) => {
@@ -240,6 +269,12 @@ function OptionCard({ option, rank }: { option: RankedOption; rank: number }) {
       </table>
     </section>
   );
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err) return String(err.message);
+  return "Something went wrong. Please try again.";
 }
 
 function listNames(names: readonly string[]): string {

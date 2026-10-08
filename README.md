@@ -7,7 +7,8 @@ Once all five have answered, the app shows the group's top 3 destinations from a
 - **`/`**: preferences form (name, budget, free dates, trip types, places you won't go).
   The form always starts blank; submitting again under the same name replaces that person's answer.
 - **`/results`**: who has answered so far, the dates when everyone is free, and the top 3 options
-  with a per-person fit score and reasons. You can also expand the full ranking of all 10 places.
+  with a per-person fit score and reasons. You can also expand the full ranking of all 10 places,
+  or press **Start over** to delete every answer and begin again.
 
 There are no live prices and no booking. Costs are rough estimates in [`lib/data.ts`](lib/data.ts).
 The ranking rules are explained at the top of [`lib/scoring.ts`](lib/scoring.ts).

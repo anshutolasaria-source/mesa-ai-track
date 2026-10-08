@@ -27,3 +27,8 @@ create policy "Anyone can add a response"
 drop policy if exists "Anyone can edit a response" on public.responses;
 create policy "Anyone can edit a response"
   on public.responses for update to anon using (true) with check (true);
+
+-- Lets the "Start over" button on the results page wipe all answers.
+drop policy if exists "Anyone can clear responses" on public.responses;
+create policy "Anyone can clear responses"
+  on public.responses for delete to anon using (true);
