@@ -28,7 +28,5 @@ drop policy if exists "Anyone can edit a response" on public.responses;
 create policy "Anyone can edit a response"
   on public.responses for update to anon using (true) with check (true);
 
--- Lets the "Start over" button on the results page wipe all answers.
-drop policy if exists "Anyone can clear responses" on public.responses;
-create policy "Anyone can clear responses"
-  on public.responses for delete to anon using (true);
+-- No delete policy on purpose: the "Start over" button clears answers by
+-- stamping them with a far-past updated_at, which the edit policy above allows.

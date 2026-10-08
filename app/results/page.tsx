@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { FRIENDS, formatRupees, tripTypeLabel } from "@/lib/data";
 import { getSupabase } from "@/lib/supabase";
 import {
+  CLEARED_AT,
   RankedOption,
   TripResponse,
   commonWindow,
   formatRange,
+  isCleared,
   rankDestinations,
 } from "@/lib/scoring";
 
@@ -23,7 +25,7 @@ export default function ResultsPage() {
     try {
       const { data, error } = await getSupabase().from("responses").select("*");
       if (error) throw error;
-      setResponses((data ?? []) as TripResponse[]);
+      setResponses(((data ?? []) as TripResponse[]).filter((r) => !isCleared(r)));
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -33,24 +35,19 @@ export default function ResultsPage() {
     load();
   }, [load]);
 
-  /** Wipes every answer so the group (or a demo) can start from scratch. */
+  /** Clears every answer so the group (or a demo) can start from scratch. */
   async function clearAll() {
-    if (!confirm("Delete everyone's answers and start over? This can't be undone.")) return;
+    if (!confirm("Clear everyone's answers and start over? This can't be undone.")) return;
     setClearing(true);
     setError("");
     try {
       const { data, error } = await getSupabase()
         .from("responses")
-        .delete()
+        .update({ updated_at: CLEARED_AT })
         .in("name", [...FRIENDS])
         .select();
       if (error) throw error;
-      // With row-level security on, a missing delete policy removes nothing and
-      // reports no error, so treat "deleted nothing" as the failure it is.
-      if (!data || data.length === 0)
-        throw new Error(
-          "Nothing was cleared. The database is still blocking deletes — run the \"Anyone can clear responses\" policy from supabase/schema.sql in the Supabase SQL editor, then try again.",
-        );
+      if (!data || data.length === 0) throw new Error("Nothing was cleared. Please try again.");
       await load();
       setShowAll(false);
     } catch (err) {

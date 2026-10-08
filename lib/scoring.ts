@@ -50,6 +50,18 @@ export type RankedOption = {
 
 const MAX_DAYS = 366;
 
+/**
+ * "Start over" can't delete rows (the app is only allowed to read, add and edit),
+ * so it stamps them with this far-past date instead. Rows carrying it are treated
+ * as unanswered everywhere, and answering again replaces it with a real date.
+ */
+export const CLEARED_AT = "1970-01-01T00:00:00.000Z";
+
+export function isCleared(response: TripResponse): boolean {
+  const stamp = Date.parse(response.updated_at ?? "");
+  return Number.isFinite(stamp) && new Date(stamp).getUTCFullYear() < 2000;
+}
+
 function parseDate(value: string): Date {
   const [y, m, d] = value.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d));
